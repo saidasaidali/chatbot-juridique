@@ -1,15 +1,372 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LexAI - Assistant Juridique</title>
+  <title>Chatbot Juridique - Assistant Juridique</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
 
-  <!-- Flask sert les fichiers statiques via /static/ -->
-  <link rel="stylesheet" href="/static/style.css">
+  <style>
+/* ===========================
+   VARIABLES
+=========================== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #ffffff;
+  --sidebar: #f6f7f9;
+  --surface: #f3f5f8;
+  --text: #1c2733;
+  --muted: #6b7a8c;
+  --faint: #9aa8b8;
+  --border: #e3e8ef;
+  --accent: #0f2a4a;
+  --accent-hover: #1b4f8a;
+  --accent-soft: #e7f0fa;
+  --bronze: #a67c3a;
+  --bronze-pale: #faf3e3;
+  --bronze-border: #e6d3a3;
+  --user-bubble: #eef2f7;
+  --green: #1e7e4e;  --green-bg: #e6f4ec;  --green-border: #bfe3cf;
+  --red: #b3261e;    --red-bg: #fdecea;    --red-border: #f3c1bd;
+  --amber: #8a5a00;  --amber-bg: #fff4d6;  --amber-border: #ecd9a0;
+  --shadow-sm: 0 1px 2px rgba(15,42,74,.06);
+  --shadow-md: 0 2px 12px rgba(15,42,74,.08);
+  --shadow-lg: 0 12px 32px rgba(15,42,74,.16);
+  --col: 760px;
+}
+
+body.dark-mode {
+  --bg: #0d1622;
+  --sidebar: #0a121c;
+  --surface: #131f30;
+  --text: #e6ecf3;
+  --muted: #a3b2c5;
+  --faint: #70839a;
+  --border: rgba(255,255,255,.10);
+  --accent: #e6ecf3;
+  --accent-hover: #ffffff;
+  --accent-soft: #1a2a40;
+  --bronze-pale: #2a2315;
+  --bronze-border: #5a4722;
+  --user-bubble: #1a2a40;
+  --green-bg: #12301f; --green-border: #1f5a39;
+  --red-bg: #3a1714;   --red-border: #6b2a25;
+  --amber-bg: #33270a; --amber-border: #6b5316;
+  --shadow-md: 0 2px 12px rgba(0,0,0,.35);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+body { display: flex; overflow: hidden; }
+button { font-family: inherit; }
+#pdfFile { display: none; }
+
+/* ===========================
+   SIDEBAR
+=========================== */
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px 14px;
+}
+.logo-mark {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--accent); color: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+}
+.logo-text { font-weight: 700; font-size: 15px; letter-spacing: -.2px; }
+.logo-text em { font-style: normal; color: var(--bronze); }
+
+.sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+
+.nav-section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase;
+  color: var(--faint); padding: 14px 10px 6px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border: none; background: none; width: 100%;
+  border-radius: 8px; color: var(--text); font-size: 14px; cursor: pointer;
+  text-align: left; transition: background .15s;
+}
+.nav-item:hover { background: var(--surface); }
+body:not(.dark-mode) .nav-item:hover { background: #e9edf2; }
+.nav-icon { width: 18px; text-align: center; color: var(--muted); flex-shrink: 0; }
+
+.history-list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.history-empty { font-size: 13px; color: var(--faint); padding: 6px 10px; }
+.history-item {
+  text-align: left; background: none; border: none; color: var(--text);
+  border-radius: 8px; padding: 8px 10px; cursor: pointer; font-size: 13px;
+}
+.history-item:hover { background: var(--surface); }
+body:not(.dark-mode) .history-item:hover { background: #e9edf2; }
+.history-item .h-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-item .h-meta { font-size: 11.5px; color: var(--faint); margin-top: 1px; }
+
+.sidebar-doc {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
+  border-radius: 10px; background: var(--bronze-pale); border: 1px solid var(--bronze-border);
+}
+.doc-icon { font-size: 18px; flex-shrink: 0; }
+.doc-info { min-width: 0; }
+.doc-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+.sidebar-stats { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--surface); }
+.stat-row { display: flex; justify-content: space-between; font-size: 12.5px; }
+.stat-label { color: var(--muted); }
+.stat-value { font-weight: 600; }
+
+.sidebar-status { display: flex; align-items: center; gap: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.status-dot.idle { background: var(--faint); }
+.status-dot.loading { background: var(--bronze); animation: pulse 1.2s infinite; }
+.status-dot.ready { background: #2fb36d; }
+.status-dot.error { background: #e5483b; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+.sidebar-about { padding: 10px; font-size: 11.5px; line-height: 1.5; color: var(--faint); border-top: 1px solid var(--border); }
+
+/* ===========================
+   MAIN + TOPBAR
+=========================== */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: var(--bg); }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; flex-shrink: 0;
+}
+.topbar-title { font-size: 16px; font-weight: 600; letter-spacing: -.2px; }
+.topbar-subtitle { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+.theme-toggle {
+  width: 36px; height: 36px; border: none; border-radius: 8px; background: none;
+  color: var(--muted); font-size: 17px; cursor: pointer; transition: background .15s;
+}
+.theme-toggle:hover { background: var(--surface); color: var(--text); }
+
+/* Document banner */
+.doc-banner {
+  display: flex; align-items: center; gap: 12px;
+  width: calc(100% - 40px); max-width: var(--col); margin: 4px auto 0;
+  padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+}
+.doc-banner-icon {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--accent); color: var(--bg);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
+}
+.doc-banner-info { flex: 1; min-width: 0; }
+.doc-banner-name { font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-banner-meta { font-size: 12px; color: var(--muted); }
+.doc-banner-status {
+  font-size: 11.5px; font-weight: 600; padding: 5px 10px; border-radius: 20px; white-space: nowrap;
+  color: var(--accent-hover); background: var(--accent-soft); border: 1px solid var(--border);
+}
+.doc-banner-status.ok  { color: var(--green); background: var(--green-bg); border-color: var(--green-border); }
+.doc-banner-status.err { color: var(--red);   background: var(--red-bg);   border-color: var(--red-border); }
+
+/* ===========================
+   CHAT AREA
+=========================== */
+.chat-area {
+  flex: 1; overflow-y: auto;
+  padding: 24px max(20px, calc((100% - var(--col)) / 2));
+  display: flex; flex-direction: column; gap: 26px;
+}
+.chat-area::-webkit-scrollbar { width: 6px; }
+.chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Empty state */
+.empty-state {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; text-align: center; padding: 40px 0; animation: fadeUp .4s ease;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.empty-glyph {
+  width: 56px; height: 56px; border-radius: 16px; background: var(--accent); color: var(--bg);
+  display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 6px;
+}
+.empty-title { font-size: 28px; font-weight: 600; letter-spacing: -.5px; }
+.empty-sub { font-size: 15px; color: var(--muted); max-width: 460px; line-height: 1.65; }
+.empty-sub strong { color: var(--text); font-weight: 600; }
+.empty-features { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.feature-chip {
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+  font-size: 12.5px; color: var(--muted);
+}
+
+/* Messages */
+.message { display: flex; gap: 14px; width: 100%; animation: fadeUp .25s ease; }
+.message-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; margin-top: 2px;
+  display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600;
+}
+.assistant-avatar { background: var(--accent); color: var(--bg); }
+.user-avatar, .message-header { display: none; }
+
+.message-content { flex: 1; min-width: 0; }
+
+.user-message { justify-content: flex-end; }
+.user-message .message-content { flex: none; max-width: 80%; }
+.user-message .message-bubble {
+  background: var(--user-bubble); padding: 10px 16px; border-radius: 18px;
+}
+
+.message-bubble {
+  font-size: 15px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.assistant-message .message-bubble { white-space: normal; }
+.message-bubble p { margin-bottom: 8px; }
+.message-bubble p:empty { display: none; }
+.message-bubble p:last-child { margin-bottom: 0; }
+.md-bold { font-weight: 700; }
+.md-list { margin: 6px 0 6px 20px; }
+.md-list li { margin-bottom: 4px; }
+
+.message-error .message-bubble {
+  background: var(--red-bg); border: 1px solid var(--red-border); color: var(--red);
+  padding: 12px 16px; border-radius: 12px;
+}
+
+/* Thinking */
+.thinking-bubble { display: inline-flex; align-items: center; gap: 6px; padding-top: 6px; }
+.thinking-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); animation: blink 1.4s infinite; }
+.thinking-dot:nth-child(2) { animation-delay: .2s; }
+.thinking-dot:nth-child(3) { animation-delay: .4s; }
+.thinking-label { font-size: 13px; color: var(--muted); margin-left: 6px; }
+@keyframes blink { 0%,60%,100% { opacity: .25; transform: scale(.8); } 30% { opacity: 1; transform: scale(1); } }
+
+/* Analysis card */
+.analysis-card { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.analysis-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.analysis-head .a-title { font-weight: 600; font-size: 14px; }
+.badge {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  padding: 5px 11px; border-radius: 20px; border: 1px solid transparent; white-space: nowrap;
+}
+.badge-ok      { background: var(--green-bg); color: var(--green); border-color: var(--green-border); }
+.badge-ko      { background: var(--red-bg);   color: var(--red);   border-color: var(--red-border); }
+.badge-partial { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-border); }
+.badge-unknown { background: var(--accent-soft); color: var(--accent-hover); border-color: var(--border); }
+.analysis-sections { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.analysis-section { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.analysis-section h4 { font-size: 11.5px; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.analysis-section .sec-body { font-size: 14px; line-height: 1.7; }
+.analysis-section.reco { background: var(--bronze-pale); border-color: var(--bronze-border); }
+
+/* ===========================
+   INPUT ZONE (composer)
+=========================== */
+.input-zone { flex-shrink: 0; padding: 8px 20px 16px; }
+.input-zone > * { max-width: var(--col); margin-left: auto; margin-right: auto; }
+
+.quick-actions { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+.quick-action {
+  padding: 6px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px;
+  font-size: 12.5px; color: var(--muted); cursor: pointer; transition: all .15s;
+}
+.quick-action:hover { background: var(--surface); color: var(--text); }
+
+.input-shell {
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 26px;
+  padding: 8px 8px 8px 10px; box-shadow: var(--shadow-md);
+  transition: border-color .2s, box-shadow .2s;
+}
+.input-shell:focus-within { border-color: var(--accent-hover); }
+
+.input-attach {
+  width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-size: 22px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background .15s;
+}
+.input-attach:hover { background: var(--surface); }
+
+.input-shell textarea {
+  flex: 1; border: none; outline: none; background: transparent; resize: none;
+  font-family: inherit; font-size: 15px; color: var(--text);
+  min-height: 36px; max-height: 180px; line-height: 1.6; padding: 6px 4px;
+}
+.input-shell textarea::placeholder { color: var(--faint); }
+.input-shell textarea:disabled { cursor: not-allowed; }
+
+.input-send {
+  width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; border: none;
+  background: var(--accent); color: var(--bg); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background .15s, opacity .15s;
+}
+.input-send:hover:not(:disabled) { background: var(--accent-hover); }
+.input-send:disabled { opacity: .3; cursor: not-allowed; }
+
+.input-hint { font-size: 11.5px; color: var(--faint); text-align: center; margin-top: 10px; }
+
+/* ===========================
+   ARTICLES PANEL (drawer)
+=========================== */
+.articles-panel {
+  position: fixed; right: 0; top: 0; bottom: 0; width: min(380px, 92vw); z-index: 100;
+  background: var(--bg); border-left: 1px solid var(--border); box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; animation: slideIn .25s ease;
+}
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: none; } }
+.articles-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 18px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.articles-header h3 { font-size: 15px; font-weight: 600; }
+.articles-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.articles-close {
+  border: none; background: var(--surface); color: var(--text); border-radius: 8px;
+  padding: 6px 12px; font-size: 12.5px; cursor: pointer;
+}
+.articles-close:hover { background: var(--border); }
+.articles-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.articles-placeholder { text-align: center; color: var(--faint); font-size: 13px; padding: 40px 16px; }
+.article-card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px; }
+.article-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.article-num { font-size: 12px; font-weight: 700; letter-spacing: .3px; }
+.article-source {
+  font-size: 11px; color: var(--muted); background: var(--bg); border: 1px solid var(--border);
+  padding: 3px 8px; border-radius: 12px; white-space: nowrap;
+}
+.article-excerpt { font-size: 12.5px; line-height: 1.65; color: var(--muted); max-height: 160px; overflow-y: auto; white-space: pre-wrap; }
+
+/* ===========================
+   RESPONSIVE
+=========================== */
+@media (max-width: 820px) {
+  .sidebar { display: none; }
+  .topbar { padding: 10px 16px; }
+  .chat-area { padding: 16px; }
+  .input-zone { padding: 8px 12px 12px; }
+  .empty-title { font-size: 22px; }
+  .doc-banner { width: calc(100% - 32px); }
+}
+  </style>
 </head>
 <body>
 
@@ -17,34 +374,24 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-mark">⚖</div>
-      <span class="logo-text">Lex<em>AI</em></span>
+      <span class="logo-text">Chatbot <em>Juridique</em></span>
     </div>
 
     <nav class="sidebar-nav">
-      <div class="nav-section-label">Navigation</div>
-      <button class="nav-item active" id="navChat">
-        <span class="nav-icon">💬</span>
-        <span>Conversation</span>
+      <button class="nav-item" id="navClear" style="display:none">
+        <span class="nav-icon">✎</span>
+        <span>Nouvelle conversation</span>
       </button>
       <button class="nav-item" id="navArticles" style="display:none">
-        <span class="nav-icon">📜</span>
-        <span>Articles</span>
+        <span class="nav-icon">§</span>
+        <span>Articles pertinents</span>
       </button>
-      <button class="nav-item" id="navUpload" onclick="document.getElementById('pdfFile').click()">
-        <span class="nav-icon">📄</span>
-        <span>Nouveau PDF</span>
-      </button>
-      <input type="file" id="pdfFile" accept=".pdf">
-      <button class="nav-item" id="navClear" style="display:none">
-        <span class="nav-icon">🔄</span>
-        <span>Réinitialiser</span>
-      </button>
-    </nav>
 
-    <div class="sidebar-status" id="sidebarStatus">
-      <div class="status-dot idle"></div>
-      <span>En attente</span>
-    </div>
+      <div class="nav-section-label">Historique</div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Aucune analyse pour le moment.</div>
+      </div>
+    </nav>
 
     <div class="sidebar-doc" id="sidebarDoc" style="display:none">
       <div class="doc-icon">📋</div>
@@ -64,50 +411,47 @@
         <span class="stat-value" id="messagesCount">0</span>
       </div>
     </div>
+
+    <div class="sidebar-status" id="sidebarStatus">
+      <div class="status-dot idle"></div>
+      <span>En attente</span>
+    </div>
+
+    <div class="sidebar-about">Analyse de conformité des appels d'offres à partir du corpus réglementaire local. Données traitées localement.</div>
   </aside>
 
   <!-- Main -->
   <main class="main">
 
-    <!-- Top bar -->
     <div class="topbar">
       <div class="topbar-left">
         <h1 class="topbar-title">Assistant Juridique</h1>
-        <div class="topbar-subtitle" id="topbarSub">Analyse IA de documents juridiques</div>
+        <div class="topbar-subtitle" id="topbarSub">Conformité des appels d'offres</div>
       </div>
-      <div class="topbar-actions">
-        <button class="upload-btn" onclick="document.getElementById('pdfFile').click()">
-          <span>📎</span> Joindre un PDF
-        </button>
-        <button class="theme-toggle" id="themeToggle" title="Basculer thème">🌙</button>
-      </div>
+      <button class="theme-toggle" id="themeToggle" title="Basculer clair / sombre">☾</button>
     </div>
 
-    <!-- Articles Panel -->
-    <div class="articles-panel" id="articlesPanel" style="display:none">
-      <div class="articles-header">
-        <h3>Articles Juridiques Pertinents</h3>
-        <button class="articles-close" onclick="closeArticlesPanel()">✕</button>
+    <!-- Document banner -->
+    <div class="doc-banner" id="docBanner" style="display:none">
+      <div class="doc-banner-icon">§</div>
+      <div class="doc-banner-info">
+        <div class="doc-banner-name" id="bannerName">—</div>
+        <div class="doc-banner-meta" id="bannerMeta">—</div>
       </div>
-      <div class="articles-list" id="articlesList">
-        <div class="articles-placeholder">Aucun article identifié</div>
-      </div>
+      <div class="doc-banner-status" id="bannerStatus">En analyse…</div>
     </div>
 
     <!-- Chat area -->
     <div class="chat-area" id="chatContainer">
       <div class="empty-state" id="emptyState">
         <div class="empty-glyph">⚖</div>
-        <h2 class="empty-title">Bienvenue dans<br><em>LexAI</em></h2>
-        <p class="empty-sub">Votre assistant IA pour l'analyse juridique. Importez un PDF d'appel d'offre et posez vos questions.</p>
-        <button class="empty-cta" onclick="document.getElementById('pdfFile').click()">
-          📄 Importer un PDF
-        </button>
+        <h2 class="empty-title">Comment puis-je vous aider ?</h2>
+        <p class="empty-sub">Cliquez sur <strong>+</strong> dans la zone de saisie pour importer un appel d'offres (PDF). Il sera analysé à partir du corpus réglementaire local.</p>
         <div class="empty-features">
-          <div class="feature-chip">✓ Analyse de conformité</div>
-          <div class="feature-chip">✓ Recherche d'articles</div>
-          <div class="feature-chip">✓ Questions libres</div>
-          <div class="feature-chip">✓ Historique sauvegardé</div>
+          <div class="feature-chip">Analyse de conformité</div>
+          <div class="feature-chip">Articles pertinents</div>
+          <div class="feature-chip">Recommandations</div>
+          <div class="feature-chip">Questions libres</div>
         </div>
       </div>
     </div>
@@ -115,31 +459,709 @@
     <!-- Input -->
     <div class="input-zone">
       <div class="quick-actions" id="quickActions" style="display:none">
-        <button class="quick-action" data-action="analyze">📊 Analyser complètement</button>
-        <button class="quick-action" data-action="conformity">✅ Vérifier conformité</button>
-        <button class="quick-action" data-action="articles">📜 Afficher articles</button>
+        <button class="quick-action" data-action="analyze">Analyser complètement</button>
+        <button class="quick-action" data-action="conformity">Vérifier conformité</button>
+        <button class="quick-action" data-action="articles">Afficher articles</button>
       </div>
       <div class="input-shell">
-        <button class="input-attach" onclick="document.getElementById('pdfFile').click()" title="Joindre PDF">📎</button>
+        <!-- Seul bouton d'upload de l'application -->
+        <button class="input-attach" id="attachBtn" onclick="document.getElementById('pdfFile').click()" title="Importer un appel d'offres (PDF)">+</button>
+        <input type="file" id="pdfFile" accept=".pdf">
         <textarea
           id="messageInput"
-          placeholder="Posez votre question juridique…"
+          placeholder="Cliquez sur + pour importer un appel d'offres…"
           rows="1"
           disabled
         ></textarea>
-        <button class="input-send" id="sendBtn" onclick="sendMessage()" disabled>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5"></line>
-            <polyline points="5 12 12 5 19 12"></polyline>
-          </svg>
+        <button class="input-send" id="sendBtn" onclick="sendMessage()" disabled title="Envoyer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
         </button>
       </div>
-      <div class="input-hint">Propulsé par Ollama · Vos données restent confidentielles</div>
+      <div class="input-hint">Traitement local — vos documents ne quittent pas votre poste. Réponses générées à partir des articles retrouvés.</div>
     </div>
 
   </main>
 
-  <!-- Flask sert le JS via /static/ -->
-  <script src="/static/script.js"></script>
+  <!-- Right panel : articles -->
+  <aside class="articles-panel" id="articlesPanel" style="display:none">
+    <div class="articles-header">
+      <div>
+        <h3>Articles juridiques pertinents</h3>
+        <div class="articles-sub" id="articlesSub">Extraits du corpus réglementaire</div>
+      </div>
+      <button class="articles-close" onclick="closeArticlesPanel()">Fermer</button>
+    </div>
+    <div class="articles-list" id="articlesList">
+      <div class="articles-placeholder">Aucun article identifié</div>
+    </div>
+  </aside>
+
+  <script>
+// ================================
+// STATE
+// ================================
+let aoText = null;
+let articles = null;
+let messageCount = 0;
+
+// Le frontend et le backend tournent sur le même serveur (http://127.0.0.1:5000)
+// Les fetch utilisent des chemins relatifs : '/analyze-pdf', '/ask'
+
+const PLACEHOLDER_EMPTY = "Cliquez sur + pour importer un appel d'offres…";
+const PLACEHOLDER_READY = 'Posez votre question sur ce document…';
+
+// ================================
+// DOM REFS
+// ================================
+const chatContainer = document.getElementById('chatContainer');
+const messageInput  = document.getElementById('messageInput');
+const sendBtn       = document.getElementById('sendBtn');
+const emptyState    = document.getElementById('emptyState');
+const sidebarStatus = document.getElementById('sidebarStatus');
+const sidebarDoc    = document.getElementById('sidebarDoc');
+const docName       = document.getElementById('docName');
+const docMeta       = document.getElementById('docMeta');
+const topbarSub     = document.getElementById('topbarSub');
+const sidebarStats  = document.getElementById('sidebarStats');
+const articlesCount = document.getElementById('articlesCount');
+const messagesCount = document.getElementById('messagesCount');
+const articlesPanel = document.getElementById('articlesPanel');
+const articlesList  = document.getElementById('articlesList');
+const quickActions  = document.getElementById('quickActions');
+const navArticles   = document.getElementById('navArticles');
+const navClear      = document.getElementById('navClear');
+const themeToggle   = document.getElementById('themeToggle');
+const docBanner     = document.getElementById('docBanner');
+const bannerName    = document.getElementById('bannerName');
+const bannerMeta    = document.getElementById('bannerMeta');
+const bannerStatus  = document.getElementById('bannerStatus');
+const articlesSub   = document.getElementById('articlesSub');
+const historyList   = document.getElementById('historyList');
+
+// ================================
+// INIT
+// ================================
+document.addEventListener('DOMContentLoaded', function () {
+  loadHistory();
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  // Textarea auto-resize
+  messageInput.addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 180) + 'px';
+    updateSendButton();
+  });
+
+  messageInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendBtn.disabled && this.value.trim()) sendMessage();
+    }
+  });
+
+  // Quick actions
+  document.querySelectorAll('.quick-action').forEach(btn => {
+    btn.addEventListener('click', handleQuickAction);
+  });
+
+  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+  if (navClear) navClear.addEventListener('click', resetConversation);
+  if (navArticles) navArticles.addEventListener('click', toggleArticlesPanel);
+}
+
+// ================================
+// QUICK ACTIONS
+// ================================
+function handleQuickAction(e) {
+  const action = e.target.dataset.action;
+
+  switch(action) {
+    case 'analyze':
+      messageInput.value = 'Analyse complètement ce document et identifie tous les problèmes de conformité.';
+      break;
+    case 'conformity':
+      messageInput.value = 'Quels sont les articles juridiques applicables à ce document? Est-il conforme?';
+      break;
+    case 'articles':
+      toggleArticlesPanel();
+      return;
+  }
+
+  messageInput.focus();
+  messageInput.style.height = 'auto';
+  messageInput.style.height = Math.min(messageInput.scrollHeight, 180) + 'px';
+  updateSendButton();
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderRichText(text) {
+  const safe = escapeHtml(text);
+  const withBold = safe.replace(/\*\*(.+?)\*\*/g, '<strong class="md-bold">$1</strong>');
+  const lines = withBold.split('\n');
+  let html = '', inList = false;
+  for (const line of lines) {
+    const t = line.trim();
+    if (/^[-*•]\s+/.test(t)) {
+      if (!inList) { html += '<ul class="md-list">'; inList = true; }
+      html += '<li>' + t.replace(/^[-*•]\s+/, '') + '</li>';
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      if (t === '') { html += '<p></p>'; } else { html += '<p>' + line + '</p>'; }
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function detectCompliance(text) {
+  const t = (text || '').toLowerCase();
+  if (/\bnon\s*conforme\b|\bnon\b.*conformit|non-conforme/.test(t) && !/partiellement/.test(t)) {
+    if (/oui/.test(t) && t.indexOf('oui') < t.indexOf('non')) return { label: 'Conformité : Oui', cls: 'badge-ok' };
+    return { label: 'Conformité : Non', cls: 'badge-ko' };
+  }
+  if (/partiellement/.test(t)) return { label: 'Conformité : Partiellement', cls: 'badge-partial' };
+  if (/(conformit[^.]{0,30}oui|^.*\boui\b.*conform)/.test(t)) return { label: 'Conformité : Oui', cls: 'badge-ok' };
+  return { label: 'Analyse de conformité', cls: 'badge-unknown' };
+}
+
+function splitAnalysis(text) {
+  const raw = String(text || '');
+  const parts = { conformity: '', violations: '', reco: '', rest: raw };
+  const idxV = raw.search(/articles?\s+viol/i);
+  const idxR = raw.search(/recommandations?/i);
+  const idxC = raw.search(/conformit/i);
+  if (idxC >= 0) {
+    const endC = Math.min(idxV > idxC ? idxV : raw.length, idxR > idxC ? idxR : raw.length);
+    parts.conformity = raw.slice(idxC, endC).trim();
+  }
+  if (idxV >= 0) {
+    const endV = (idxR > idxV) ? idxR : raw.length;
+    parts.violations = raw.slice(idxV, endV).trim();
+  }
+  if (idxR >= 0) parts.reco = raw.slice(idxR).trim();
+  return parts;
+}
+
+function articleMeta(article, idx) {
+  const str = typeof article === 'string' ? article : (article?.text || JSON.stringify(article));
+  const title = (typeof article === 'object' && article?.title) ? article.title : null;
+  const source = (typeof article === 'object' && article?.source) ? article.source : 'Corpus réglementaire local';
+  const score = (typeof article === 'object' && article?.score != null) ? 'Score : ' + article.score : null;
+  const m = str.match(/(ARTICLE\s+\d+[^.\n]{0,80}|ART\.\s*\d+[^.\n]{0,80}|CHAPITRE\s+\d+[^.\n]{0,80}|SECTION\s+\d+[^.\n]{0,80}|TITRE\s+\d+[^.\n]{0,80})/i);
+  const num = title || (m ? m[1].trim() : ('Référence ' + (idx + 1)));
+  const excerpt = str.length > 900 ? str.slice(0, 900) + '…' : str;
+  return { num, source, excerpt, score };
+}
+
+// ================================
+// ARTICLES PANEL
+// ================================
+function toggleArticlesPanel() {
+  articlesPanel.style.display = (articlesPanel.style.display === 'none') ? 'flex' : 'none';
+}
+
+function closeArticlesPanel() {
+  articlesPanel.style.display = 'none';
+}
+
+function displayArticles(articlesList_data) {
+  if (articlesSub) articlesSub.textContent = (articlesList_data ? articlesList_data.length : 0) + " extrait(s) — score non fourni par le backend";
+  if (!articlesList_data || articlesList_data.length === 0) {
+    articlesList.innerHTML = '<div class="articles-placeholder">Aucun article identifié</div>';
+    return;
+  }
+  articlesList.innerHTML = '';
+  articlesList_data.forEach(function(article, idx) {
+    const meta = articleMeta(article, idx);
+    const item = document.createElement('div');
+    item.className = 'article-card';
+    const head = document.createElement('div');
+    head.className = 'article-card-head';
+    const num = document.createElement('div');
+    num.className = 'article-num';
+    num.textContent = (idx + 1) + '. ' + meta.num;
+    const src = document.createElement('div');
+    src.className = 'article-source';
+    src.textContent = meta.source;
+    head.appendChild(num);
+    head.appendChild(src);
+    const ex = document.createElement('div');
+    ex.className = 'article-excerpt';
+    ex.textContent = meta.excerpt;
+    item.appendChild(head);
+    item.appendChild(ex);
+    articlesList.appendChild(item);
+  });
+}
+
+// ================================
+// THEME TOGGLE
+// ================================
+function updateThemeIcon() {
+  if (themeToggle) themeToggle.textContent = document.body.classList.contains('dark-mode') ? '☀' : '☾';
+}
+
+function toggleTheme() {
+  const isDark = document.body.classList.toggle('dark-mode');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  updateThemeIcon();
+}
+
+// ================================
+// HISTORY & RESET
+// ================================
+function saveHistory() {
+  const messages = Array.from(document.querySelectorAll('.message')).map(msg => {
+    const role = msg.classList.contains('user-message') ? 'user' : 'assistant';
+    const bubble = msg.querySelector('.message-bubble');
+    const kind = msg.dataset.kind || 'text';
+    const text = bubble ? (bubble.textContent || '') : '';
+    const html = (kind === 'analysis' || kind === 'rich') ? bubble.innerHTML : null;
+    return { role, text, kind, html };
+  });
+  const history = loadHistoryList();
+  const entryName = (window.currentDocName || (aoText ? 'Document chargé' : null));
+  if (entryName && aoText) {
+    const existing = history.findIndex(h => h.name === entryName);
+    const entry = { name: entryName, date: new Date().toLocaleString('fr-FR'), count: (articles ? articles.length : 0), aoText, articles };
+    if (existing >= 0) history[existing] = entry; else history.unshift(entry);
+    localStorage.setItem('analysesHistory', JSON.stringify(history.slice(0, 20)));
+  }
+  localStorage.setItem('chatHistory', JSON.stringify({ messages, aoText, articles, messageCount, docName: window.currentDocName || null }));
+  renderHistoryList();
+}
+
+function loadHistoryList() {
+  try { return JSON.parse(localStorage.getItem('analysesHistory') || '[]'); }
+  catch (e) { return []; }
+}
+
+function renderHistoryList() {
+  if (!historyList) return;
+  const history = loadHistoryList();
+  historyList.innerHTML = '';
+  if (!history.length) {
+    historyList.innerHTML = '<div class="history-empty">Aucune analyse pour le moment.</div>';
+    return;
+  }
+  history.forEach(function(h, i) {
+    const b = document.createElement('button');
+    b.className = 'history-item';
+    const n = document.createElement('div');
+    n.className = 'h-name';
+    n.textContent = h.name;
+    const m = document.createElement('div');
+    m.className = 'h-meta';
+    m.textContent = h.date + ' · ' + h.count + ' articles';
+    b.appendChild(n);
+    b.appendChild(m);
+    b.addEventListener('click', function() { restoreAnalysis(i); });
+    historyList.appendChild(b);
+  });
+}
+
+function restoreAnalysis(i) {
+  const history = loadHistoryList();
+  const h = history[i];
+  if (!h) return;
+  aoText = h.aoText;
+  articles = h.articles;
+  window.currentDocName = h.name;
+  removeEmptyState();
+  messageInput.disabled = false;
+  messageInput.placeholder = PLACEHOLDER_READY;
+  showDoc(h.name, (articles ? articles.length : 0) + ' articles identifiés');
+  if (docBanner) docBanner.style.display = 'flex';
+  if (bannerName) bannerName.textContent = h.name;
+  if (bannerMeta) bannerMeta.textContent = (articles ? articles.length : 0) + ' articles · ' + h.date;
+  if (bannerStatus) { bannerStatus.textContent = 'Document analysé'; bannerStatus.className = 'doc-banner-status ok'; }
+  displayArticles(articles);
+  articlesPanel.style.display = 'flex';
+  quickActions.style.display = 'flex';
+  navArticles.style.display = 'flex';
+  navClear.style.display = 'flex';
+  sidebarStats.style.display = 'flex';
+  updateSendButton();
+  updateStats();
+}
+
+function loadHistory() {
+  const saved = localStorage.getItem('chatHistory');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      aoText = parsed.aoText;
+      articles = parsed.articles;
+      messageCount = parsed.messageCount;
+      window.currentDocName = parsed.docName || null;
+      const messages = parsed.messages;
+
+      if (messages && messages.length > 0) {
+        removeEmptyState();
+        messages.forEach(function(msg) {
+          if (msg.kind === 'analysis') addAnalysisCard(msg.text);
+          else if (msg.kind === 'rich') addMessage(msg.role, msg.text, true, msg.html);
+          else addMessage(msg.role, msg.text);
+        });
+
+        if (aoText) {
+          messageInput.disabled = false;
+          messageInput.placeholder = PLACEHOLDER_READY;
+          showDoc(window.currentDocName || 'Document chargé', (articles ? articles.length : 0) + ' articles');
+          if (docBanner) docBanner.style.display = 'flex';
+          if (bannerName) bannerName.textContent = window.currentDocName || 'Document chargé';
+          if (bannerMeta) bannerMeta.textContent = (articles ? articles.length : 0) + ' articles identifiés';
+          if (bannerStatus) { bannerStatus.textContent = 'Document analysé'; bannerStatus.className = 'doc-banner-status ok'; }
+          displayArticles(articles);
+          quickActions.style.display = 'flex';
+          navArticles.style.display = 'flex';
+          navClear.style.display = 'flex';
+          sidebarStats.style.display = 'flex';
+          updateStats();
+        }
+      }
+    } catch (e) {
+      console.error('Erreur lors du chargement de l\'historique:', e);
+    }
+  }
+  renderHistoryList();
+
+  const theme = localStorage.getItem('theme') || 'light';
+  if (theme === 'dark') document.body.classList.add('dark-mode');
+  updateThemeIcon();
+}
+
+function resetConversation() {
+  if (confirm('Êtes-vous sûr de vouloir réinitialiser la conversation?')) {
+    aoText = null;
+    articles = null;
+    messageCount = 0;
+    window.currentDocName = null;
+    document.getElementById('pdfFile').value = '';
+    chatContainer.innerHTML = '';
+    chatContainer.appendChild(emptyState);
+    messageInput.disabled = true;
+    messageInput.value = '';
+    messageInput.placeholder = PLACEHOLDER_EMPTY;
+    messageInput.style.height = 'auto';
+    updateSendButton();
+    sidebarDoc.style.display = 'none';
+    sidebarStatus.style.display = 'flex';
+    setStatus('idle', 'En attente');
+    updateTopbar("Conformité des appels d'offres");
+    if (docBanner) docBanner.style.display = 'none';
+    quickActions.style.display = 'none';
+    navArticles.style.display = 'none';
+    navClear.style.display = 'none';
+    sidebarStats.style.display = 'none';
+    articlesPanel.style.display = 'none';
+    localStorage.removeItem('chatHistory');
+  }
+}
+
+// ================================
+// FILE UPLOAD  →  /analyze-pdf
+// ================================
+document.getElementById('pdfFile').addEventListener('change', async function (e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    addMessage('assistant', 'Veuillez sélectionner un fichier PDF valide.', false, null, true);
+    e.target.value = '';
+    return;
+  }
+
+  setStatus('loading', 'Analyse en cours…');
+  if (docBanner) docBanner.style.display = 'flex';
+  if (bannerName) bannerName.textContent = file.name;
+  if (bannerMeta) bannerMeta.textContent = formatSize(file.size) + ' · extraction et recherche des articles…';
+  if (bannerStatus) { bannerStatus.textContent = 'Analyse en cours…'; bannerStatus.className = 'doc-banner-status'; }
+  removeEmptyState();
+  addMessage('user', 'Document importé : ' + file.name + ' (' + formatSize(file.size) + ')');
+  const thinkingId = addThinking('Analyse en cours… extraction, recherche FAISS puis analyse Mistral.');
+
+  try {
+    const formData = new FormData();
+    formData.append('pdf', file);
+
+    // Chemin relatif — fonctionne car Flask sert tout depuis /
+    const res = await fetch('/analyze-pdf', {
+      method: 'POST',
+      body: formData
+    });
+
+    removeThinking(thinkingId);
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Erreur HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (!data.ao_text || !data.articles) throw new Error('Réponse backend incomplète (ao_text/articles manquants).');
+    aoText = data.ao_text;
+    articles = data.articles;
+    window.currentDocName = file.name;
+    messageCount = 2;
+
+    setStatus('ready', 'Document analysé');
+    showDoc(file.name, (articles ? articles.length : 0) + ' articles identifiés');
+    updateTopbar(file.name + ' · prêt pour les questions');
+    if (bannerMeta) bannerMeta.textContent = formatSize(file.size) + ' · ' + (articles ? articles.length : 0) + ' articles identifiés';
+    if (bannerStatus) { bannerStatus.textContent = 'Document analysé'; bannerStatus.className = 'doc-banner-status ok'; }
+
+    if (data.analysis) addAnalysisCard(data.analysis);
+    else addMessage('assistant', 'Document analysé avec succès ! Posez vos questions.');
+
+    messageInput.disabled = false;
+    messageInput.placeholder = PLACEHOLDER_READY;
+    messageInput.focus();
+    updateSendButton();
+
+    // Afficher articles, quick actions et stats
+    displayArticles(articles);
+    articlesPanel.style.display = 'flex';
+    quickActions.style.display = 'flex';
+    navArticles.style.display = 'flex';
+    navClear.style.display = 'flex';
+    sidebarStats.style.display = 'flex';
+    updateStats();
+
+  } catch (error) {
+    removeThinking(thinkingId);
+    setStatus('error', "Erreur d'analyse");
+    if (bannerStatus) { bannerStatus.textContent = "Échec de l'analyse"; bannerStatus.className = 'doc-banner-status err'; }
+    addMessage('assistant', friendlyError(error, 'analyse'), false, null, true);
+  }
+
+  e.target.value = '';
+  saveHistory();
+});
+
+// ================================
+// SEND MESSAGE  →  /ask
+// ================================
+async function sendMessage() {
+  const question = messageInput.value.trim();
+  if (!question) return;
+
+  addMessage('user', question);
+  messageInput.value = '';
+  messageInput.style.height = 'auto';
+  updateSendButton();
+  messageCount++;
+
+  const thinkingId = addThinking('Recherche de la réponse…');
+
+  try {
+    // Chemin relatif — même origine
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, ao_text: aoText, articles })
+    });
+
+    removeThinking(thinkingId);
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || ('Erreur HTTP ' + res.status));
+    }
+
+    const data = await res.json();
+    if (!data.answer) throw new Error('Réponse backend incomplète (answer manquant).');
+    addMessage('assistant', data.answer, true);
+    messageCount++;
+
+  } catch (error) {
+    removeThinking(thinkingId);
+    addMessage('assistant', friendlyError(error, 'question'), false, null, true);
+  }
+
+  updateStats();
+  saveHistory();
+  messageInput.focus();
+}
+
+// ================================
+// DOM HELPERS
+// ================================
+function formatSize(bytes) {
+  if (bytes == null) return 'taille inconnue';
+  if (bytes < 1024) return bytes + ' o';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' Ko';
+  return (bytes / 1048576).toFixed(1) + ' Mo';
+}
+
+function friendlyError(error, context) {
+  const msg = String((error && error.message) || error || '');
+  if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
+    return 'Connexion au serveur impossible. Vérifiez que Flask tourne sur http://127.0.0.1:5000 puis réessayez.';
+  }
+  if (/incomplète/i.test(msg)) return msg + ' Vérifiez les logs Flask.';
+  if (context === 'analyse') return "Erreur lors de l'analyse : " + msg + ' — Vérifiez Ollama (mistral), FAISS et le PDF.';
+  return 'Erreur : ' + msg;
+}
+
+function addMessage(role, text, rich, html, isError) {
+  removeEmptyState();
+
+  const msg = document.createElement('div');
+  msg.className = 'message ' + role + '-message' + (isError ? ' message-error' : '');
+  msg.dataset.kind = rich ? 'rich' : 'text';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message-avatar ' + role + '-avatar';
+  avatar.textContent = role === 'user' ? 'Vous' : '§';
+
+  const content = document.createElement('div');
+  content.className = 'message-content';
+
+  const header = document.createElement('div');
+  header.className = 'message-header';
+  header.textContent = role === 'user' ? 'Vous' : 'Chatbot Juridique';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'message-bubble';
+  if (rich && html) bubble.innerHTML = html;
+  else if (rich) bubble.innerHTML = renderRichText(text);
+  else bubble.textContent = text;
+
+  content.appendChild(header);
+  content.appendChild(bubble);
+  msg.appendChild(avatar);
+  msg.appendChild(content);
+  chatContainer.appendChild(msg);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function addAnalysisCard(analysisText) {
+  removeEmptyState();
+  const badge = detectCompliance(analysisText);
+  const parts = splitAnalysis(analysisText);
+  const msg = document.createElement('div');
+  msg.className = 'message assistant-message';
+  msg.dataset.kind = 'analysis';
+  const avatar = document.createElement('div');
+  avatar.className = 'message-avatar assistant-avatar';
+  avatar.textContent = '§';
+  const card = document.createElement('div');
+  card.className = 'analysis-card';
+  const head = document.createElement('div');
+  head.className = 'analysis-head';
+  const title = document.createElement('div');
+  title.className = 'a-title';
+  title.textContent = 'Analyse de conformité';
+  const b = document.createElement('span');
+  b.className = 'badge ' + badge.cls;
+  b.textContent = badge.label;
+  head.appendChild(title);
+  head.appendChild(b);
+  const secs = document.createElement('div');
+  secs.className = 'analysis-sections';
+  function section(t, bodyHtml, cls) {
+    if (!bodyHtml) return;
+    const s = document.createElement('div');
+    s.className = 'analysis-section' + (cls ? ' ' + cls : '');
+    const h = document.createElement('h4');
+    h.textContent = t;
+    const bd = document.createElement('div');
+    bd.className = 'sec-body';
+    bd.innerHTML = bodyHtml;
+    s.appendChild(h);
+    s.appendChild(bd);
+    secs.appendChild(s);
+  }
+  section('Conformité', parts.conformity ? renderRichText(parts.conformity) : renderRichText(badge.label));
+  section('Articles et points de vigilance', parts.violations ? renderRichText(parts.violations) : null);
+  section('Recommandations', parts.reco ? renderRichText(parts.reco) : null, 'reco');
+  if (!parts.conformity && !parts.violations && !parts.reco) section('Détail', renderRichText(analysisText));
+  card.appendChild(head);
+  card.appendChild(secs);
+  const content = document.createElement('div');
+  content.className = 'message-content';
+  content.appendChild(card);
+  const bubbleProxy = document.createElement('div');
+  bubbleProxy.className = 'message-bubble';
+  bubbleProxy.style.display = 'none';
+  bubbleProxy.textContent = analysisText;
+  content.appendChild(bubbleProxy);
+  msg.appendChild(avatar);
+  msg.appendChild(content);
+  chatContainer.appendChild(msg);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function addThinking(label) {
+  const id = 'thinking-' + Date.now();
+  const msg = document.createElement('div');
+  msg.className = 'message assistant-message';
+  msg.id = id;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'message-avatar assistant-avatar';
+  avatar.textContent = '§';
+
+  const content = document.createElement('div');
+  content.className = 'message-content';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'thinking-bubble';
+  bubble.innerHTML = '<div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div>';
+  const lbl = document.createElement('span');
+  lbl.className = 'thinking-label';
+  lbl.textContent = label || 'Analyse en cours…';
+  bubble.appendChild(lbl);
+
+  content.appendChild(bubble);
+  msg.appendChild(avatar);
+  msg.appendChild(content);
+  chatContainer.appendChild(msg);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  return id;
+}
+
+function removeThinking(id) {
+  document.getElementById(id)?.remove();
+}
+
+function removeEmptyState() {
+  emptyState?.parentNode && emptyState.remove();
+}
+
+function updateSendButton() {
+  sendBtn.disabled = !messageInput.value.trim() || messageInput.disabled;
+}
+
+function setStatus(state, label) {
+  const dot  = sidebarStatus.querySelector('.status-dot');
+  const span = sidebarStatus.querySelector('span');
+  dot.className = `status-dot ${state}`;
+  span.textContent = label;
+}
+
+function showDoc(name, meta) {
+  sidebarDoc.style.display = 'flex';
+  docName.textContent = name;
+  docMeta.textContent = meta;
+  sidebarStatus.style.display = 'none';
+}
+
+function updateTopbar(text) {
+  if (topbarSub) topbarSub.textContent = text;
+}
+
+function updateStats() {
+  if (articlesCount) articlesCount.textContent = articles ? articles.length : 0;
+  if (messagesCount) messagesCount.textContent = messageCount;
+}
+  </script>
 </body>
 </html>

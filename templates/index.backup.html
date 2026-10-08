@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot Juridique - Assistant Juridique</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+
+  <!-- Flask sert les fichiers statiques via /static/ -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">⚖</div>
+      <span class="logo-text">Chatbot <em>Juridique</em></span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <button class="nav-item active" id="navChat">
+        <span class="nav-icon">▤</span>
+        <span>Conversation</span>
+      </button>
+      <button class="nav-item" id="navArticles" style="display:none">
+        <span class="nav-icon">§</span>
+        <span>Articles</span>
+      </button>
+      <button class="nav-item nav-primary" id="navUpload" onclick="document.getElementById('pdfFile').click()">
+        <span class="nav-icon">＋</span>
+        <span>Nouvelle analyse</span>
+      </button>
+      <input type="file" id="pdfFile" accept=".pdf">
+      <button class="nav-item" id="navClear" style="display:none">
+        <span class="nav-icon">⟲</span>
+        <span>Réinitialiser</span>
+      </button>
+      <div class="nav-section-label" style="margin-top:14px">Historique</div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Aucune analyse pour le moment.</div>
+      </div>
+    </nav>
+
+    <div class="sidebar-about">
+      <div class="about-title">À propos</div>
+      <p>Analyse de conformité des appels d'offres à partir du corpus réglementaire local. Données traitées localement.</p>
+    </div>
+
+    <div class="sidebar-status" id="sidebarStatus">
+      <div class="status-dot idle"></div>
+      <span>En attente</span>
+    </div>
+
+    <div class="sidebar-doc" id="sidebarDoc" style="display:none">
+      <div class="doc-icon">📋</div>
+      <div class="doc-info">
+        <div class="doc-name" id="docName">—</div>
+        <div class="doc-meta" id="docMeta">—</div>
+      </div>
+    </div>
+
+    <div class="sidebar-stats" id="sidebarStats" style="display:none">
+      <div class="stat-row">
+        <span class="stat-label">Articles</span>
+        <span class="stat-value" id="articlesCount">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Messages</span>
+        <span class="stat-value" id="messagesCount">0</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 class="topbar-title">Assistant Juridique</h1>
+        <div class="topbar-subtitle" id="topbarSub">Analysez la conformité juridique de vos appels d'offres à partir du corpus réglementaire.</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="upload-btn" onclick="document.getElementById('pdfFile').click()">
+          Importer un appel d'offres
+        </button>
+        <button class="theme-toggle" id="themeToggle" title="Basculer clair / sombre">Clair / Sombre</button>
+      </div>
+    </div>
+
+    <!-- Document banner -->
+    <div class="doc-banner" id="docBanner" style="display:none">
+      <div class="doc-banner-icon">§</div>
+      <div class="doc-banner-info">
+        <div class="doc-banner-name" id="bannerName">—</div>
+        <div class="doc-banner-meta" id="bannerMeta">—</div>
+      </div>
+      <div class="doc-banner-status" id="bannerStatus">En analyse…</div>
+    </div>
+
+    <!-- Chat area -->
+    <div class="chat-area" id="chatContainer">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-glyph">§</div>
+        <h2 class="empty-title">Chatbot Juridique</h2>
+        <p class="empty-sub">Importez un appel d'offres au format PDF. Le document sera analysé à partir du corpus réglementaire local : conformité, articles applicables et recommandations.</p>
+        <div class="upload-card" onclick="document.getElementById('pdfFile').click()" role="button" tabindex="0">
+          <div class="upload-card-title">Importer un appel d'offres PDF</div>
+          <div class="upload-card-sub">Le document sera analysé à partir du corpus réglementaire local.</div>
+          <div class="upload-card-cta">Sélectionner un fichier</div>
+        </div>
+        <div class="empty-features">
+          <div class="feature-chip">Analyse de conformité</div>
+          <div class="feature-chip">Articles pertinents</div>
+          <div class="feature-chip">Recommandations</div>
+          <div class="feature-chip">Questions libres</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-zone">
+      <div class="quick-actions" id="quickActions" style="display:none">
+        <button class="quick-action" data-action="analyze">Analyser complètement</button>
+        <button class="quick-action" data-action="conformity">Vérifier conformité</button>
+        <button class="quick-action" data-action="articles">Afficher articles</button>
+      </div>
+      <div class="input-shell">
+        <button class="input-attach" onclick="document.getElementById('pdfFile').click()" title="Joindre PDF">+</button>
+        <textarea
+          id="messageInput"
+          placeholder="Posez votre question juridique…"
+          rows="1"
+          disabled
+        ></textarea>
+        <button class="input-send" id="sendBtn" onclick="sendMessage()" disabled>Envoyer</button>
+      </div>
+      <div class="input-hint">Traitement local — vos documents ne quittent pas votre poste. Réponses générées à partir des articles retrouvés.</div>
+    </div>
+
+  </main>
+
+  <!-- Right panel : articles -->
+  <aside class="articles-panel" id="articlesPanel" style="display:none">
+    <div class="articles-header">
+      <div>
+        <h3>Articles juridiques pertinents</h3>
+        <div class="articles-sub" id="articlesSub">Extraits du corpus réglementaire</div>
+      </div>
+      <button class="articles-close" onclick="closeArticlesPanel()">Fermer</button>
+    </div>
+    <div class="articles-list" id="articlesList">
+      <div class="articles-placeholder">Aucun article identifié</div>
+    </div>
+  </aside>
+
+  <!-- Flask sert le JS via /static/ -->
+  <script src="/static/script.js"></script>
+</body>
+</html>
